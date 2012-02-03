@@ -332,7 +332,7 @@ public:
       else if(ir_dereference_array* deref = ir->as_dereference_array())
       {
          llvm::Value* gep[2] = {llvm_int(0), llvm_value(deref->array_index)};
-         return bld.CreateInBoundsGEP(llvm_pointer(deref->array), gep, gep + 2);
+         return bld.CreateInBoundsGEP(llvm_pointer(deref->array), gep);
          }
       else if(ir->as_dereference())
       {
@@ -983,7 +983,19 @@ public:
       }
 
       bld.SetInsertPoint(discard);
-      bld.CreateUnwind();
+
+      // FIXME: According to the LLVM mailing list, UnwindInst should not
+      // be used by the frontend since LLVM 3.0, and 'CreateUnwind'
+      // method has been removed from the IRBuilder.  Here's the
+      // temporary workaround.  But it would be better to remove
+      // this in the future.
+      //
+      // A solution after LLVM 3.0: To add a global boolean in the shader to
+      // store whether it was discarded or not and just continue on normally,
+      // and handle the discard outside the shader, in the scanline function.
+      // The discard instruction is not used frequently, so it should be okay
+      // performance wise.
+      new llvm::UnwindInst(ctx, discard); /// Deprecated
 
       bb = after;
       bld.SetInsertPoint(bb);
